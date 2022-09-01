@@ -1,0 +1,68 @@
+version: '2'
+services:
+  server:
+    image: szurubooru/server:latest
+    depends_on:
+      - sql
+    environment:
+      ## These should be the names of the dependent containers listed below,
+      ## or FQDNs/IP addresses if these services are running outside of Docker
+      POSTGRES_HOST: sql
+      ## Credentials for database:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      ## Commented Values are Default:
+      #POSTGRES_DB: defaults to same as POSTGRES_USER
+      #POSTGRES_PORT: 5432
+      #LOG_SQL: 0 (1 for verbose SQL logs)
+      THREADS: 4
+    volumes:
+      - "./szurubooru/data/:/data"
+      - "./szurubooru/config/config.yaml:/opt/app/config.yaml"
+    networks:
+      booru:
+        ipv4_address: 172.20.1.2 
+  client:
+    image: szurubooru/client:latest
+    depends_on:
+      - server
+    environment:
+      BACKEND_HOST: server
+      BASE_URL:
+    volumes:
+      - "./szurubooru/data:/data:ro"
+    networks:
+      booru:
+        ipv4_address: 172.20.1.3
+  sql:
+    image: postgres:11-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+    volumes:
+      - "./szurubooru/sql:/var/lib/postgresql/data"
+    networks:
+      booru:
+        ipv4_address: 172.20.1.4
+  proxy:
+    image: theenoro/szurubooru_to_booru_api
+    restart: unless-stopped
+    user: "node"
+    environment:
+      BASEURL_SZURUBOORU: client
+      REDIRECTURL_INTERNAL_STACK: "${HOST_URL}"
+      DEBUG: "${DEBUG}"
+    ports:
+      - "${PORT_PROXY}:5432"
+    networks:
+      booru:
+        ipv4_address: 172.20.1.5
+networks:
+  booru:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.1.0/29
+          gateway: 172.20.1.1
