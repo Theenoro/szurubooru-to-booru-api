@@ -8,7 +8,8 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 
 import { Post } from "./helpers/post.js";
 import { colors } from './helpers/log.js';
-import { rating } from './helpers/regex.js';
+import { order, rating } from './helpers/regex.js';
+import { setFields } from './helpers/fields.js';
 
 let baseURL = process.env.BASEURL_SZURUBOORU || "http://szurubooru.int";
 let redirectURL = process.env.REDIRECTURL_INTERNAL_STACK || "http://172.20.1.3";
@@ -62,11 +63,17 @@ app.get('/posts.json?*', async (req, res) => {
                 console.log(tag[t]);
                 if (tag[t].includes("rating")) {
                     tag[t] = rating(tag[t]);
+                }else if(tag[t].includes("order")){
+                    tag[t] = order(tag[t]);
                 }
             }
             tags = tag.join(" ");
-            console.log(tags);
-            url += `query=${tags}&`;
+            if(tags!=""){
+                url += `query=${tags}&`;
+            }
+            continue;
+        }
+        if ( k === "fields"){
             continue;
         }
         url += `${k}=${req.query[k]}&`;
@@ -78,8 +85,8 @@ app.get('/posts.json?*', async (req, res) => {
 
         }
     }
-    debug ? console.log(`[${colors.FgCyan}Debug${colors.Reset}] ${req.socket.remoteAddress} request SZURUBOORU api with url ${url}`) : "";
-    let fet = await fetch(`${url}`, {
+    debug ? console.log(`[${colors.FgCyan}Debug${colors.Reset}] ${req.socket.remoteAddress} request SZURUBOORU api with url ${url}fields=${setFields("all")}`) : "";
+    let fet = await fetch(`${url}fields=${setFields("all")}`, {
         "headers": {
             "accept": "application/json",
             "content-type": "application/json"
